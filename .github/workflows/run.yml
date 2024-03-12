@@ -1,4 +1,4 @@
-name: FGO Login System
+name: FGO Daily Login
 
 on:
   push:
@@ -6,10 +6,9 @@ on:
   pull_request:
     branches: [master]
   schedule:
-    - cron: "00 03 * * *"
-    - cron: "30 03 * * *"
-    - cron: "30 13 * * *"
-    - cron: "30 17 * * *"
+    - cron: "30 03 * * *" #GMT+08: 11:30
+    - cron: "30 13 * * *" #GMT+08: 21:30
+    - cron: "30 17 * * *" #GMT+08: 1:30 (next day)
   workflow_dispatch:
 
 jobs:
@@ -21,7 +20,7 @@ jobs:
 
     steps:
       - name: Install Requeriments
-        run: pip install -r https://raw.githubusercontent.com/O-Isaac/FGO-Daily-Login/master/requirements.txt
+        run: pip install -r https://raw.githubusercontent.com/asahinobori/FgoDailyLogin/master/requirements.txt
 
       - name: Gettings files from Repo
         uses: actions/checkout@v2

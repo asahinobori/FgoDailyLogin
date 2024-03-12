@@ -25,7 +25,7 @@ def topLogin(data: list) -> None:
         "content": None,
         "embeds": [
             {
-                "title": "FGO登录系统 - " + main.fate_region,
+                "title": "FGO每天登录 - " + main.fate_region,
                 "description": f"登录成功。列出角色信息.\n\n{messageBonus}",
                 "color": 563455,
                 "fields": [
@@ -133,7 +133,7 @@ def shop(item: str, quantity: str) -> None:
         "content": None,
         "embeds": [
             {
-                "title": "FGO自动购物系统 - " + main.fate_region,
+                "title": "FGO自动购物 - " + main.fate_region,
                 "description": f"购买成功.",
                 "color": 5814783,
                 "fields": [
@@ -182,7 +182,7 @@ def drawFP(servants, missions) -> None:
         "content": None,
         "embeds": [
             {
-                "title": "FGO自动抽卡系统 - " + main.fate_region,
+                "title": "FGO自动抽卡 - " + main.fate_region,
                 "description": f"完成当日免费友情抽卡。列出抽卡结果.\n\n{message_mission}",
                 "color": 5750876,
                 "fields": [
