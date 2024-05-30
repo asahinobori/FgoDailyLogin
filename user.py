@@ -20,11 +20,12 @@ import time
 import requests
 import shutil
 
-
-
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
 from urllib.parse import quote_plus
 from libs.GetSubGachaId import GetGachaSubIdFP
-from fake_useragent import UserAgent
 
 class ParameterBuilder:
     def __init__(self, uid: str, auth_key: str, secret_key: str):
@@ -142,24 +143,33 @@ class user:
 
     def topLogin_s(self):
         DataWebhook = []  
-        
-        idk = self.builder_.get_idempotency_key()
-        idempotency_key_signature = os.environ.get('IDEMPOTENCY_KEY_SIGNATURE_SECRET')
         device_info = os.environ.get('DEVICE_INFO_SECRET')
-        ua = UserAgent()
-        headers = {
-            'User-Agent': ua.random
-        }
-        url = f'{idempotency_key_signature}userId={self.user_id_}&idempotencyKey={idk}'
-        result = requests.get(url, headers=headers, verify=False).text
+        
+        with open('private_key.pem', 'rb') as f:
+            loaded_private_key = serialization.load_pem_private_key(
+                f.read(), password=None, backend=default_backend())
+            
+        def sign(uuid):
+            signature = loaded_private_key.sign(
+                bytes(uuid, 'utf-8'),
+                padding.PKCS1v15(),
+                hashes.SHA256()
+            )
+            return base64.b64encode(signature).decode('utf-8')
+            
+        userid = self.user_id_
+        idk = self.builder_.get_idempotency_key()
+        input_string = f"{userid}{idk}"
+        idempotencyKeySignature = sign(input_string)
         
         lastAccessTime = self.builder_.parameter_list_[5][1]
+        
         userState = (-int(lastAccessTime) >>
                      2) ^ self.user_id_ & fgourl.data_server_folder_crc_
 
         self.builder_.AddParameter(
             'assetbundleFolder', fgourl.asset_bundle_folder_)
-        self.builder_.AddParameter('idempotencyKeySignature', result)
+        self.builder_.AddParameter('idempotencyKeySignature', idempotencyKeySignature)
         self.builder_.AddParameter('deviceInfo', device_info)
         self.builder_.AddParameter('isTerminalLogin', '1')
         self.builder_.AddParameter('userState', str(userState))
@@ -247,14 +257,14 @@ class user:
         serverTime = data['cache']['serverTime']
         ap_points = act_recover_at - serverTime
         remaining_ap = 0
-    
+        
         if ap_points > 0:
             lost_ap_point = (ap_points + 299) // 300
             if act_max >= lost_ap_point:
                 remaining_ap_int = act_max - lost_ap_point
                 remaining_ap = int(remaining_ap_int)
-            else:
-                main.logger.info("失去的AP点超过了当前actMax值-计算失败")
+        else:
+            remaining_ap = act_max + carryOverActPoint
         
         now_act = (act_max - (act_recover_at - mytime.GetTimeStamp()) / 300)
 
@@ -312,54 +322,60 @@ class user:
             actMax = data['cache']['replaced']['userGame'][0]['actMax']
             carryOverActPoint = data['cache']['replaced']['userGame'][0]['carryOverActPoint']
             serverTime = data['cache']['serverTime']
-            
+        
             bluebronzesapling = 0 
             for item in data['cache']['replaced']['userItem']:
                 if item['itemId'] == 103:
                     bluebronzesapling = item['num']
                     break
-                    
+                
             ap_points = actRecoverAt - serverTime
-            
+            remaining_ap = 0
+        
             if ap_points > 0:
                lost_ap_point = (ap_points + 299) // 300
-               
                if actMax >= lost_ap_point:
                    remaining_ap = actMax - lost_ap_point
                    remaining_ap_int = int(remaining_ap)
+            else:
+                remaining_ap = actMax + carryOverActPoint
+                remaining_ap_int = int(remaining_ap)
 
+            if bluebronzesapling > 0:
+                quantity = remaining_ap_int // 40
+                if quantity == 0:
+                    main.logger.info(f"\n ======================================== \n APが40未満の場合は購入できません (´･ω･`)? \n ======================================== ")
+                    return
+                
+                if bluebronzesapling < quantity:
+                    num_to_purchase = bluebronzesapling
+                else:
+                    num_to_purchase = quantity
 
-               if bluebronzesapling > 0:
-                   quantity = remaining_ap_int // 40
-                   if bluebronzesapling < quantity:
-                       num_to_purchase = bluebronzesapling
-                   else:
-                       num_to_purchase = quantity
+                self.builder_.AddParameter('id', '13000000')
+                self.builder_.AddParameter('num', str(num_to_purchase))
 
-                   self.builder_.AddParameter('id', '13000000')
-                   self.builder_.AddParameter('num', str(num_to_purchase))
+                data = self.Post(f'{fgourl.server_addr_}/shop/purchase?_userId={self.user_id_}')
+                responses = data['response']
 
-                   data = self.Post(f'{fgourl.server_addr_}/shop/purchase?_userId={self.user_id_}')
-                   responses = data['response']
+                for response in responses:
+                    resCode = response['resCode']
+                    resSuccess = response['success']
+                    nid = response["nid"]
 
-                   for response in responses:
-                       resCode = response['resCode']
-                       resSuccess = response['success']
-                       nid = response["nid"]
+                    if (resCode != "00"):
+                        continue
 
-                       if (resCode != "00"):
-                           continue
+                    if nid == "purchase":
+                        if "purchaseName" in resSuccess and "purchaseNum" in resSuccess:
+                            purchaseName = resSuccess['purchaseName']
+                            purchaseNum = resSuccess['purchaseNum']
 
-                       if nid == "purchase":
-                           if "purchaseName" in resSuccess and "purchaseNum" in resSuccess:
-                               purchaseName = resSuccess['purchaseName']
-                               purchaseNum = resSuccess['purchaseNum']
+                            main.logger.info(f"\n========================================\n[+] {purchaseNum}x {purchaseName} 购买成功\n========================================")
+                            webhook.shop(purchaseName, purchaseNum)
+            else:
+                main.logger.info(f"\n ======================================== \n ＞︿＜ 青銅の苗木が足りないヽ (*。>Д<)o゜ \n ======================================== " )
 
-                               main.logger.info(f"\n========================================\n[+] {purchaseNum}x {purchaseName} 购买成功\n========================================")
-                               webhook.shop(purchaseName, purchaseNum)
-               else:
-                   main.logger.info(f"\n ======================================== \n ＞︿＜ 青銅の苗木が足りないヽ (*。>Д<)o゜ \n ======================================== " )
-    
 
     def drawFP(self):
         self.builder_.AddParameter('storyAdjustIds', '[]')
