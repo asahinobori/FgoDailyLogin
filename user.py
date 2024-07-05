@@ -378,28 +378,21 @@ class user:
 
 
     def drawFP(self):
+        gachaSubId = GetGachaSubIdFP("JP")
+
+        if gachaSubId is None:
+               gachaSubId = "0"
+            
         self.builder_.AddParameter('storyAdjustIds', '[]')
+        self.builder_.AddParameter('selectBonusList', '')
         self.builder_.AddParameter('gachaId', '1')
         self.builder_.AddParameter('num', '10')
         self.builder_.AddParameter('ticketItemId', '0')
         self.builder_.AddParameter('shopIdIndex', '1')
+        self.builder_.AddParameter('gachaSubId', gachaSubId)
 
-        if main.fate_region == "NA":
-            gachaSubId = GetGachaSubIdFP("NA")
-            if gachaSubId is None:
-                gachaSubId = "0" 
-            self.builder_.AddParameter('gachaSubId', gachaSubId)
-            main.logger.info(f"\n ======================================== \n [+] 召唤卡池GachaSubId ： {gachaSubId} \n ======================================== " )
-        else:
-            gachaSubId = GetGachaSubIdFP("JP")
-            if gachaSubId is None:
-                gachaSubId = "0" 
-            self.builder_.AddParameter('gachaSubId', gachaSubId)
-            main.logger.info(f"\n ======================================== \n [+] 召唤卡池GachaSubId ： {gachaSubId} \n ======================================== " )
-
-        data = self.Post(
-            f'{fgourl.server_addr_}/gacha/draw?_userId={self.user_id_}')
-
+        main.logger.info(f"\n ======================================== \n [+] 友情卡池ID : {gachaSubId}\n ======================================== " )
+        data = self.Post(f'{fgourl.server_addr_}/gacha/draw?_userId={self.user_id_}')
         responses = data['response']
 
         servantArray = []
@@ -435,7 +428,7 @@ class user:
 
 
     def lq001(self):
-         # https://game.fate-go.jp/present/list?_userId=
+         # https://game.fate-go.jp/present/list?
           
         data = self.Post(
             f'{fgourl.server_addr_}/present/list?_userId={self.user_id_}')
@@ -444,7 +437,7 @@ class user:
         main.logger.info(f"\n ======================================== \n [+] 读取礼物盒 \n ======================================== " )
 
     def lq002(self):
-         # https://game.fate-go.jp/present/receive?_userId=
+         # https://game.fate-go.jp/present/receive?
         with open('login.json', 'r', encoding='utf-8')as f:
             data = json.load(f)
 
@@ -455,18 +448,14 @@ class user:
 
         with open('JJM.json', 'w') as f:
             json.dump(present_ids, f, ensure_ascii=False, indent=4)
-
-        main.logger.info(f"\n ======================================== \n [+] 礼物盒内容解析完成 \n ======================================== " )
-
+            
         time.sleep(1)
 
         if os.path.exists('JJM.json'):
             with open('JJM.json', 'r', encoding='utf-8') as file:
-                data1 = json.load(file)
+                datas = json.load(file)
 
-            data = data1
-
-            msgpack_data = msgpack.packb(data)
+            msgpack_data = msgpack.packb(datas)
 
             base64_encoded_data = base64.b64encode(msgpack_data).decode()
 
@@ -480,5 +469,178 @@ class user:
             responses = data['response']
 
             main.logger.info(f"\n ======================================== \n [+] 领取成功 \n ======================================== " )
-        else:
-            main.logger.info(f"\n ======================================== \n [+] 没有物品可领取 \n ======================================== " )
+
+    def lq003(self):
+        # https://game.fate-go.jp/shop/purchase?
+
+        url = 'https://git.atlasacademy.io/atlasacademy/fgo-game-data/raw/branch/JP/master/mstShop.json'
+        response = requests.get(url)
+
+        fdata = response.json()
+        max_base_shop_id = None
+        max_base_shop_s_id = None
+        num = None
+
+        for item in fdata:
+            if 4001 in item.get('targetIds', []) and item.get('flag') == 4096:
+                base_shop_id = item.get('baseShopId')
+                if max_base_shop_id is None or base_shop_id > max_base_shop_id:
+                    max_base_shop_id = base_shop_id
+
+        if max_base_shop_id is not None:
+            shopId = max_base_shop_id
+
+            with open('login.json', 'r', encoding='utf-8') as file:
+                gdata = json.load(file)
+
+            num_value = None
+
+            for item in gdata.get('cache', {}).get('updated', {}).get('userShop', []):
+                if item.get('shopId') == shopId:
+                    num_value = item.get('num')
+                    break
+
+            if num_value is not None:
+                shopId = max_base_shop_id
+                num_ok = 5 - num_value
+                if num_ok == 0:
+                   main.logger.info(f"\n ======================================== \n 每月呼符 你已经兑换过了(´･ω･`) \n ======================================== ")
+                else:
+                    mana = gdata['cache']['replaced']['userGame'][0]['mana']
+                    mana_s = mana // 20
+                    if mana_s == 0:
+                       main.logger.info(f"\n ======================================== \n 魔力棱镜不足(´･ω･`) \n ======================================== ")
+                    else:
+                        if num_ok > mana_s:
+                           num = mana_s
+                        else:
+                           num = num_ok
+
+                        self.builder_.AddParameter('id', str(shopId))
+                        self.builder_.AddParameter('num', str(num))
+
+                        data = self.Post(
+                            f'{fgourl.server_addr_}/shop/purchase?_userId={self.user_id_}')
+                
+                        responses = data['response'] 
+                        if num is not None:
+                           main.logger.info(f"\n ======================================== \n 已兑换 {num} 呼符 （每月）\n ======================================== ")       
+            else:
+                num_ok = 5
+                mana = gdata['cache']['replaced']['userGame'][0]['mana']
+                mana_s = mana // 20
+                if mana_s == 0:
+                   main.logger.info(f"\n ======================================== \n 魔力棱镜不足(´･ω･`) \n ======================================== ")
+                else:
+                    if num_ok > mana_s:
+                       num = mana_s
+                    else:
+                       num = num_ok
+
+                    self.builder_.AddParameter('id', str(shopId))
+                    self.builder_.AddParameter('num', str(num))
+
+                    data = self.Post(
+                        f'{fgourl.server_addr_}/shop/purchase?_userId={self.user_id_}') 
+                    
+                    if num is not None:
+                       main.logger.info(f"\n ======================================== \n 已兑换 {num} 呼符 （每月） \n ======================================== ")
+
+        for item in fdata:
+            if 4001 in item.get('targetIds', []) and item.get('flag') == 2048:
+                base_shop_s_id = item.get('baseShopId')
+                if max_base_shop_s_id is None or base_shop_s_id > max_base_shop_s_id:
+                    max_base_shop_s_id = base_shop_s_id
+
+        if max_base_shop_s_id is not None:
+            shopId = max_base_shop_s_id
+
+            for item in fdata:
+                if item.get('baseShopId') == max_base_shop_s_id:
+                    closedAt = item.get('closedAt')
+
+                    response = requests.get("http://worldtimeapi.org/api/timezone/Etc/UTC")
+                    if response.status_code == 200:
+                        current_time = response.json()['unixtime']
+
+                        if current_time > closedAt:
+                            main.logger.info(f"\n ======================================== \n 目前没有 绿方块活动(´･ω･`) \n ======================================== ")
+                            return
+                        else:
+                            with open('login.json', 'r', encoding='utf-8') as file:
+                                 gdata = json.load(file)
+
+                            mana = gdata['cache']['replaced']['userGame'][0]['mana']
+                            mana_s = mana // 20
+                            num_value = None
+
+                            for item in gdata.get('cache', {}).get('updated', {}).get('userShop', []):
+                                if item.get('shopId') == shopId:
+                                    num_value = item.get('num')
+                                    break
+
+                            if num_value is not None:
+                               num_ok = 5 - num_value
+                               if num_ok == 0:
+                                   main.logger.info(f"\n ======================================== \n 活动呼符 你已经兑换过了(´･ω･`) \n ======================================== ")
+                                   return
+                               else:
+                                    if mana_s == 0:
+                                       main.logger.info(f"\n ======================================== \n 魔力棱镜不足(´･ω･`) \n ======================================== ")
+                                    else:
+                                        if num_ok > mana_s:
+                                           num = mana_s
+                                        else:
+                                           num = num_ok
+
+                                    self.builder_.AddParameter('id', str(shopId))
+                                    self.builder_.AddParameter('num', str(num))
+
+                                    data = self.Post(
+                                        f'{fgourl.server_addr_}/shop/purchase?_userId={self.user_id_}') 
+                                    if num is not None:
+                                       main.logger.info(f"\n ======================================== \n 已兑换 {num} 呼符 （限时活动）\n ======================================== ")
+                            else:
+                                 num_ok = 5
+                                 mana = gdata['cache']['replaced']['userGame'][0]['mana']
+                                 mana_s = mana // 20
+                                 if mana_s == 0:
+                                    main.logger.info(f"\n ======================================== \n 魔力棱镜不足(´･ω･`) \n ======================================== ")
+                                    return
+                                 else:
+                                     if num_ok > mana_s:
+                                        num = mana_s
+                                     else:
+                                         num = num_ok
+                 
+                                     self.builder_.AddParameter('id', str(shopId))
+                                     self.builder_.AddParameter('num', str(num))
+
+                                     data = self.Post(
+                                         f'{fgourl.server_addr_}/shop/purchase?_userId={self.user_id_}') 
+                                     if num is not None:
+                                        main.logger.info(f"\n ======================================== \n 已兑换 {num} 呼符 （限时活动） \n ======================================== ")
+                    else:
+                        main.logger.info(f"时间服务器连接失败")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -56,8 +56,9 @@ adb shell cp /storage/emulated/0/Android/data/com.aniplex.fategrandorder/files/d
 
 
 # 4. 创建 Discord 消息通知机器人
-要创建 webhook Discord，您需要在 Discord 中创建一个服务器 并在该频道的 设置中 创建一个 文本频道
-`integration > webhook > create webhook > copy url webhook`
+- 要创建 Webhook Discord，您需要在 Discord 中创建一个服务器 并在该频道的 设置中 创建一个 文本频道
+- `integration > webhook > create webhook > copy url webhook`
+- 复制获得的 Webhook URL 填写到 DISCORD_WEBHOOK 
 
 
 # 5. 填写 Github Secrets
@@ -76,7 +77,6 @@ adb shell cp /storage/emulated/0/Android/data/com.aniplex.fategrandorder/files/d
 | GAME_AUTHKEYS | RaNdOmStRiNg1234:randomAAAAA=,RaNdOmStRiNg1235:randomAAAAA= |
 | GAME_SECRETKEYS | RaNdOmStRiNg1234:randomAAAAA=,RaNdOmStRiNg1235:randomAAAAA= |
 | GAME_USERIDS | 1234,1235 |
-| GAME_REGION | JP |
 | USER_AGENT_SECRET_2 | Dalvik/2.1.0 (Linux; U; Android 14; Pixel 5 Build/UP1A.231105.001) 建议不要照抄 |
 | DEVICE_INFO_SECRET | Google Pixel 5 / Android OS 14 / API-34 (UP1A.231105.001/10817346) 建议不要照抄 |
 | DISCORD_WEBHOOK | https://discord.com/api/webhooks/randomNumber/randomString |
@@ -107,10 +107,10 @@ adb shell cp /storage/emulated/0/Android/data/com.aniplex.fategrandorder/files/d
 - [x] 自动每日友情点召唤
 - [x] 自动种蓝苹果🍎
 - [x] 自动领取礼物盒
+- [x] 自动兑换达芬奇商店 每月&限时活动 呼符
 - -------------------------------------------------------------------------------------- -
 # 未来计划 （咕咕咕🤣）
-- [ ] ....想要什么功能。。你来说。。
-
+- [ ] 待定…
 # 感谢
 - [hexstr](https://github.com/hexstr) 
 
