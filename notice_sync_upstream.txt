@@ -1,0 +1,4 @@
+同步FgoDailyLogin的上游仓库(原作者)的代码
+
+git fetch upstream
+git merge upstream/master
