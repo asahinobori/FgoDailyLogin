@@ -6,6 +6,7 @@ import fgourl
 import user
 import coloredlogs
 import logging
+import sys
 
 userIds = os.environ['userIds'].split(',')
 authKeys = os.environ['authKeys'].split(',')
@@ -47,7 +48,6 @@ def main():
             try:
                 instance = user.user(userIds[i], authKeys[i], secretKeys[i])
                 time.sleep(1)
-                logger.info(f"\n {'=' * 40} \n [+] 登录账号 \n {'=' * 40} " )
                 instance.topLogin()
                 time.sleep(2)
                 instance.topHome()
@@ -62,9 +62,17 @@ def main():
                 time.sleep(1)
                 instance.lq003()
                 time.sleep(1)
-                instance.LTO_Gacha()
-                time.sleep(1)
+
+                #if "--Free_Gacha" in sys.argv:
+                    #instance.Free_Gacha()
+
                 instance.drawFP()
+                time.sleep(1)
+                #instance.LTO_Gacha()
+                #instance.LTO_drawFP()
+
+            
+                
 
 
             except Exception as ex:
